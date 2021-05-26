@@ -32,6 +32,7 @@
 
 (setq function_position nil)
 (setq target_buffer (buffer-name))
+(setq tagbar_buffer nil)
 
 (defun what-line ()
   "Print the current line number (in the buffer) of point."
@@ -44,6 +45,7 @@
 
 (defun process_tagbar()
   (interactive)
+  (setq function_position nil)
   (kill-whole-line)
   (kill-whole-line)
   (save-excursion
@@ -63,13 +65,20 @@
 
 (defun test()
     (interactive)
-    (setq filename buffer-file-name)
-    (setq command-string (concat "ctags -e " buffer-file-name))
-    (shell-command command-string)
-    (get-buffer-create "tagber")
-    (switch-to-buffer "tagbar")
-    (insert-file-contents "TAGS")
-    (process_tagbar))
+    (if tagbar_buffer
+	(progn
+	  (message "Buffer exists")
+	  (switch-to-buffer tagbar_buffer))
+        (progn
+	  (setq target_buffer (buffer-name))
+	  (setq filename buffer-file-name)
+	  (setq command-string (concat "ctags -e " buffer-file-name))
+	  (shell-command command-string)
+	  (get-buffer-create "tagbar")
+	  (switch-to-buffer "tagbar")
+	  (setq tagbar_buffer (buffer-name))
+	  (insert-file-contents "TAGS")
+	  (process_tagbar))))
 
 (defun search_copyight()
   (interactive)
@@ -83,19 +92,28 @@
 (defun tagbar/gotodefinition()
   (interactive)
   (let* ((line (what-line)) (list function_position))
-    (while (not (eq line (car (car (list)))))
+    (while (not (eq (car (car list)) line))
       (setq list (cdr list)))
-    (setq target ((string-to-numbercdr (car list))))
+    (message (number-to-string (car (car list))))
+    (setq target_line (string-to-number (cdr (car list))))
+    (if (integerp target_line)
+	(message "y"))
     (switch-to-buffer target_buffer)
-    (goto-line target)))
+    (goto-line target_line)))
+    ;; (while (not (eq line (string-to-number (car (car (list))))))
+    ;;   (message (car (car list)))
+    ;;   (setq list (cdr list)))
+    ;; (switch-to-buffer target_buffer)
+    ;; (goto-line target)))
 
 (define-derived-mode tagbar-mode text-mode "Tagbar"
   "Mode for navigating definition"
-  (setq function_position nil))
+  (setq function_position nil)
+  (message "Welcome to tagbar"))
 
 (defvar tagbar-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map "\C-f" 'tagbar/goto-definition)
+    (define-key map "\C-c\C-f" 'tagbar/gotodefinition)
     map))
 
 asdddddddddddadsssssssa
