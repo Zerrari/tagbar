@@ -18,23 +18,40 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-;;; Commentary:
+;; Commentary:
 
 ;; 
 
 ;;; Code:
 
-;; (setq tagbar-name "tagbar")
+(defvar tagbar-target-buffer nil
+  "Keep the target buffer name in this variable.")
 
-;; (get-buffer-create tagbar-name)
-;; (switch-to-buffer tagbar-name)
-;; buffer-file-name
+(defvar tagbar-mode-buffer nil
+  "Keep the mode-buffer-name in this variable.")
 
-(setq function_position nil)
-(setq target_buffer (buffer-name))
-(setq tagbar_buffer nil)
+(setq tagbar-mode-buffer nil)
 
-(defun what-line ()
+(defvar tagbar-function-position-list nil
+  "Keep the functions and their positions in this variable.")
+
+(defvar tagbar-check-buffer-exists nil
+  "This variable checks if the tagbar buffer exists.")
+
+(defvar tagbar-current-line-number nil
+  "Store the current line number in tagbar buffer.")
+
+;; (defvar tagbar-current-file-name nil
+;;   "Store the current file name.")
+
+(defvar tagbar-ctags-command-string nil
+  ;;(concat "ctags -e " buffer-file-name)
+  "Store the shell command to create TAGS file.")
+
+(defvar tagbar-target-line nil
+  "Store the line which the definition locates.")
+
+(defun tagbar-what-line ()
   "Print the current line number (in the buffer) of point."
   (interactive)
   (save-restriction
@@ -43,86 +60,107 @@
       (beginning-of-line)
 	    (1+ (count-lines 1 (point))))))
 
-(defun process_tagbar()
+(defun tagbar-process-tags()
+  "Process TAGS file."
   (interactive)
-  (setq function_position nil)
+  (setq tagbar-function-position-list nil)
   (kill-whole-line)
   (kill-whole-line)
   (save-excursion
     (progn
 	(goto-char (point-max))
-	(setq tagbar/linenumbers (what-line))))
-  (while ( < (what-line) tagbar/linenumbers)
+	(setq tagbar-current-line-number (tagbar-what-line))))
+  (while ( < (tagbar-what-line) tagbar-current-line-number)
     (progn 
 	(end-of-line)
 	(search-backward ",")
 	(backward-char)
-	(getpoint)
+	(tagbar-get-position)
 	(search-backward ")")
 	(forward-char)
 	(kill-line)
+	(beginning-of-line)
+	(search-forward " ")
+	(backward-kill-word 1)
 	(forward-line 1))))
 
-(defun test()
+(defun tagbar-toggle()
+  "Toggle tagbar."
     (interactive)
-    (if tagbar_buffer
+    (if tagbar-mode-buffer
 	(progn
 	  (message "Buffer exists")
-	  (switch-to-buffer tagbar_buffer))
+	  (switch-to-buffer tagbar-mode-buffer))
         (progn
-	  (setq target_buffer (buffer-name))
-	  (setq filename buffer-file-name)
-	  (setq command-string (concat "ctags -e " buffer-file-name))
-	  (shell-command command-string)
+	  (setq tagbar-target-buffer (buffer-name))
+	  (setq tagbar-ctags-command-string (concat "ctags -e " buffer-file-name))
+	  (shell-command tagbar-ctags-command-string)
 	  (get-buffer-create "tagbar")
+	  (split-window-right)
+	  (other-window 1)
 	  (switch-to-buffer "tagbar")
 	  (tagbar-mode)
-	  (setq tagbar_buffer (buffer-name))
+	  (setq tagbar-mode-buffer (buffer-name))
 	  (insert-file-contents "TAGS")
-	  (process_tagbar)
-	  (goto-line 1))))
+	  (tagbar-process-tags)
+	  (forward-line (- 1 (tagbar-what-line)))
+	  (insert "  Functions:\n")
+	  (setq buffer-read-only t))))
 
-(defun search_copyight()
+(defun tagbar-quit ()
+  "Quit the tagbar buffer."
   (interactive)
-  (search-forward ""))
+  (setq tagbar-mode-buffer nil)
+  (kill-buffer-and-window))
+ 
 
-(defun getpoint()
+(defun tagbar-get-position()
+  "Get currnet position to form list."
   (interactive)
-  (let* ((line (what-line)) (position (current-word))) 
-    (push (cons line position) function_position)))
+  (let* ((line (tagbar-what-line)) (position (current-word))) 
+    (push (cons (+ 1 line) position) tagbar-function-position-list)))
 
-(defun tagbar/gotodefinition()
+(defun tagbar-goto-definition()
+  "Go to the function definition."
   (interactive)
-  (let* ((line (what-line)) (list function_position))
-    (while (not (eq (car (car list)) line))
+  (let* ((line (tagbar-what-line)) (list tagbar-function-position-list))
+    (while (not (eq (car (car list)) (+ 1 line)))
       (setq list (cdr list)))
     (message (number-to-string (car (car list))))
-    (setq target_line (string-to-number (cdr (car list))))
-    (if (integerp target_line)
+    (setq tagbar-target-line (string-to-number (cdr (car list))))
+    (if (integerp tagbar-target-line)
 	(message "y"))
-    (switch-to-buffer target_buffer)
-    (goto-line target_line)))
+    (other-window 1)
+    ;; (switch-to-buffer tagbar-target-buffer)
+    ;;(goto-line target_line)
+    (forward-line (- tagbar-target-line (tagbar-what-line)))))
     ;; (while (not (eq line (string-to-number (car (car (list))))))
     ;;   (message (car (car list)))
     ;;   (setq list (cdr list)))
     ;; (switch-to-buffer target_buffer)
     ;; (goto-line target)))
 
-(define-derived-mode tagbar-mode text-mode "Tagbar"
+(defvar tagbar-mode-hook nil)
+
+(defvar tagbar-mode-map nil)
+
+(progn
+  (setq tagbar-mode-map (make-sparse-keymap))
+  (define-key tagbar-mode-map (kbd "C-c C-q") 'tagbar-quit)
+  (define-key tagbar-mode-map (kbd "C-c C-f") 'tagbar-goto-definition))
+
+
+;;;###autoload
+(add-to-list 'auto-mode-alist '("tagbar" . tagbar-mode))
+
+
+
+(define-derived-mode tagbar-mode text-mode
   "Mode for navigating definition"
-  (setq function_position nil)
+  (setq tagbar-function-position-list nil)
+  (setq tagbar-mode-buffer nil)
   (modern-c++-font-lock-mode 1)
+  (use-local-map tagbar-mode-map) 
   (message "Welcome to tagbar"))
 
-(defvar tagbar-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map "\C-c\C-f" 'tagbar/gotodefinition)
-    map))
-
-
-;; (defvar tagbar-mode-syntax-table
-;;   (funcall (c-lang-const c-make-mode-syntax-table c++))
-;;   "Syntax table used in c++-mode buffers.")
-
-asdddddddddddadsssssssa
 ;;; tagbar.el ends here
