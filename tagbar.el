@@ -76,9 +76,11 @@
 	  (shell-command command-string)
 	  (get-buffer-create "tagbar")
 	  (switch-to-buffer "tagbar")
+	  (tagbar-mode)
 	  (setq tagbar_buffer (buffer-name))
 	  (insert-file-contents "TAGS")
-	  (process_tagbar))))
+	  (process_tagbar)
+	  (goto-line 1))))
 
 (defun search_copyight()
   (interactive)
