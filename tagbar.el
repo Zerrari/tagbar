@@ -109,12 +109,18 @@
 (define-derived-mode tagbar-mode text-mode "Tagbar"
   "Mode for navigating definition"
   (setq function_position nil)
+  (modern-c++-font-lock-mode 1)
   (message "Welcome to tagbar"))
 
 (defvar tagbar-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "\C-c\C-f" 'tagbar/gotodefinition)
     map))
+
+
+;; (defvar tagbar-mode-syntax-table
+;;   (funcall (c-lang-const c-make-mode-syntax-table c++))
+;;   "Syntax table used in c++-mode buffers.")
 
 asdddddddddddadsssssssa
 ;;; tagbar.el ends here
