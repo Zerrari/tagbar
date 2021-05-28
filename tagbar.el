@@ -51,6 +51,13 @@
 (defvar tagbar-target-line nil
   "Store the line which the definition locates.")
 
+(defvar tagbar-mode-hook nil)
+
+(defvar tagbar-mode-map nil)
+
+(defvar tagbar-syntax-table c-mode-syntax-table
+  "Set the variable to c-mode-syntax-table.")
+
 (defun tagbar-what-line ()
   "Print the current line number (in the buffer) of point."
   (interactive)
@@ -82,6 +89,8 @@
 	(beginning-of-line)
 	(search-forward " ")
 	(backward-kill-word 1)
+	(end-of-line)
+	(insert ";")
 	(forward-line 1))))
 
 (defun tagbar-toggle()
@@ -101,6 +110,7 @@
 	  (switch-to-buffer "tagbar")
 	  (tagbar-mode)
 	  (setq tagbar-mode-buffer (buffer-name))
+	  (erase-buffer)
 	  (insert-file-contents "TAGS")
 	  (tagbar-process-tags)
 	  (forward-line (- 1 (tagbar-what-line)))
@@ -113,6 +123,11 @@
   (setq tagbar-mode-buffer nil)
   (kill-buffer-and-window))
  
+
+(defun tagbar-disable-evil-key ()
+  "Disable some evil keys in tagbar buffer."
+  (evil-local-set-key 'normal (kbd "f") 'tagbar-goto-definition)
+  (evil-local-set-key 'normal (kbd "q") 'tagbar-quit))
 
 (defun tagbar-get-position()
   "Get currnet position to form list."
@@ -140,27 +155,23 @@
     ;; (switch-to-buffer target_buffer)
     ;; (goto-line target)))
 
-(defvar tagbar-mode-hook nil)
-
-(defvar tagbar-mode-map nil)
 
 (progn
   (setq tagbar-mode-map (make-sparse-keymap))
-  (define-key tagbar-mode-map (kbd "C-c C-q") 'tagbar-quit)
-  (define-key tagbar-mode-map (kbd "C-c C-f") 'tagbar-goto-definition))
-
+  (define-key tagbar-mode-map (kbd "C-q") 'tagbar-quit)
+  (message "OK")
+  (define-key tagbar-mode-map (kbd "C-f") 'tagbar-goto-definition))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("tagbar" . tagbar-mode))
 
-
-
-(define-derived-mode tagbar-mode text-mode
+(define-derived-mode tagbar-mode c-mode
   "Mode for navigating definition"
   (setq tagbar-function-position-list nil)
   (setq tagbar-mode-buffer nil)
-  (modern-c++-font-lock-mode 1)
   (use-local-map tagbar-mode-map) 
+  (tagbar-disable-evil-key)
   (message "Welcome to tagbar"))
+
 
 ;;; tagbar.el ends here
